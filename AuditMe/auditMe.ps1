@@ -588,7 +588,7 @@ function Audit-InstalledPrograms {
         }
     }
 
-    $programs = $programs | Sort-Object Name -CaseInsensitive
+    $programs = $programs | Sort-Object Name
 
     if ($null -eq $programs -or $programs.Count -eq 0) {
         $AuditResults["InstalledPrograms"] += [PSCustomObject]@{
@@ -1278,9 +1278,10 @@ function Audit-WindowsDefender {
             }
         }
 
-        # Signature currency.
-        $signatureAge = $defenderStatus.AntivirusSignatureAge
-        if ($null -ne $signatureAge) {
+        # Signature currency. AntivirusSignatureAge is a UInt32; Defender reports the sentinel
+        # 4294967295 (0xFFFFFFFF) when no age is known, which would overflow an [int] cast.
+        $signatureAge = [uint32]$defenderStatus.AntivirusSignatureAge
+        if ($null -ne $defenderStatus.AntivirusSignatureAge -and $signatureAge -ne [uint32]::MaxValue) {
             if ([int]$signatureAge -gt 2 -or [bool]$defenderStatus.DefenderSignaturesOutOfDate) {
                 Write-Host "    ⚠️ Antimalware signatures are $($signatureAge) day(s) old." -ForegroundColor Yellow
                 $AuditResults["WindowsDefender"] += [PSCustomObject]@{
@@ -1315,12 +1316,22 @@ function Audit-WindowsDefender {
             }
         }
 
-        # Last full scan age.
+        # Last full scan age. FullScanAge is a UInt32; Defender reports the sentinel
+        # 4294967295 (0xFFFFFFFF) when no full scan has ever completed.
         if ($null -ne $defenderStatus.FullScanAge) {
-            $AuditResults["WindowsDefender"] += [PSCustomObject]@{
-                RiskLevel = if ([int]$defenderStatus.FullScanAge -gt 7) { "Medium" } else { "Pass" }
-                Name      = "Last Full Scan"
-                Detail    = "$($defenderStatus.FullScanAge) day(s) ago (source: $($defenderStatus.LastFullScanSource))"
+            $fullScanAge = [uint32]$defenderStatus.FullScanAge
+            if ($fullScanAge -eq [uint32]::MaxValue) {
+                $AuditResults["WindowsDefender"] += [PSCustomObject]@{
+                    RiskLevel = "Medium"
+                    Name      = "Last Full Scan"
+                    Detail    = "No full scan on record (Defender reports 0xFFFFFFFF sentinel)"
+                }
+            } else {
+                $AuditResults["WindowsDefender"] += [PSCustomObject]@{
+                    RiskLevel = if ($fullScanAge -gt 7) { "Medium" } else { "Pass" }
+                    Name      = "Last Full Scan"
+                    Detail    = "$fullScanAge day(s) ago (source: $($defenderStatus.LastFullScanSource))"
+                }
             }
         }
     }
