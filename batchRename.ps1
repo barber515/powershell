@@ -1,0 +1,1 @@
+Dir *.mkv | ForEach-Object  -begin { $count=1 }  -process { rename-item $_ -NewName "S01E$count.mkv"; $count++ }
