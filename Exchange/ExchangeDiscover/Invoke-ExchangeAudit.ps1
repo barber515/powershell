@@ -505,7 +505,14 @@ Add-Section -Title 'Mailbox Server Statistics' -Description 'Overall mailbox cou
                         if ($_.Group) {
                             $sum = 0
                             foreach ($item in $_.Group) {
-                                if ($null -ne $item.TotalItemSize) { $sum += $item.TotalItemSize.ToBytes() }
+                                try {
+                                    if ($null -ne $item.TotalItemSize) { $sum += $item.TotalItemSize.ToBytes() }
+                                } catch {
+                                    # Unlimited<ByteQuantifiedSize> wrapper — unwrap via .Value
+                                    try {
+                                        if ($null -ne $item.TotalItemSize.Value) { $sum += $item.TotalItemSize.Value.ToBytes() }
+                                    } catch {}
+                                }
                             }
                             [math]::Round($sum / 1GB, 2)
                         } else { "N/A" }
@@ -518,7 +525,14 @@ Add-Section -Title 'Mailbox Server Statistics' -Description 'Overall mailbox cou
                     TotalStorageGB      = if ($stats) {
                         $sum = 0
                         foreach ($item in $stats) {
-                            if ($null -ne $item.TotalItemSize) { $sum += $item.TotalItemSize.ToBytes() }
+                            try {
+                                if ($null -ne $item.TotalItemSize) { $sum += $item.TotalItemSize.ToBytes() }
+                            } catch {
+                                # Unlimited<ByteQuantifiedSize> wrapper — unwrap via .Value
+                                try {
+                                    if ($null -ne $item.TotalItemSize.Value) { $sum += $item.TotalItemSize.Value.ToBytes() }
+                                } catch {}
+                            }
                         }
                         [math]::Round($sum / 1GB, 2)
                     } else { "N/A" }
