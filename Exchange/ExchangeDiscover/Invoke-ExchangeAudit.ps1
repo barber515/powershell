@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 
 <#
 .SYNOPSIS
@@ -76,7 +76,7 @@ param(
 $ErrorActionPreference = 'Continue'
 Set-StrictMode -Version Latest
 
-# L-7: Preflight check — verify Exchange cmdlets are available (running outside EMS)
+# L-7: Preflight check â€” verify Exchange cmdlets are available (running outside EMS)
 if (-not (Get-Command Get-ExchangeServer -ErrorAction SilentlyContinue)) {
     Write-Error "This script must be run from the Exchange Management Shell."
     exit 1
@@ -205,7 +205,7 @@ catch {
     Write-Warning "Could not retrieve organization configuration: $_"
 }
 
-# C-1: Domain info — no #Requires -Modules ActiveDirectory; use env fallback
+# C-1: Domain info â€” no #Requires -Modules ActiveDirectory; use env fallback
 $domainInfo = [pscustomobject]@{ DNSRoot = $env:USERDNSDOMAIN; Forest = $env:USERDNSDOMAIN }
 try {
     if (Get-Command Get-ADDomain -ErrorAction SilentlyContinue) {
@@ -222,18 +222,18 @@ Write-Host "Gathering server configuration..." -ForegroundColor Cyan
 # Section: Server Configuration
 Add-Section -Title 'Exchange Server Configuration' -Description 'Detailed configuration of all Exchange servers in the environment.' -Severity 'Info' -Query {
     $exchangeServers | Select-Object Name, Site, Edition, AdminDisplayVersion, ServerRole,
-        @ { n = 'IsMailboxServer'; e = { $_.ServerRoles -match 'Mailbox' } },
-        @ { n = 'IsEdgeServer'; e = { $_.ServerRoles -match 'Edge' } }
+        @{ n = 'IsMailboxServer'; e = { $_.ServerRoles -match 'Mailbox' } },
+        @{ n = 'IsEdgeServer'; e = { $_.ServerRoles -match 'Edge' } }
 }
 
 # Section: Patch Levels (M-1: Exchange 2019 uses CUs, not RUs)
 Add-Section -Title 'Exchange Server Cumulative Update Levels' -Description 'Current cumulative update build number for each Exchange server. Critical to maintain recent updates for security.' -Severity 'High' -Query {
     $exchangeServers | Select-Object Name,
-        @ { n = 'AdminDisplayVersion'; e = { $_.AdminDisplayVersion.ToString() } },
-        @ { n = 'Major'; e = { $_.AdminDisplayVersion.Major } },
-        @ { n = 'Minor'; e = { $_.AdminDisplayVersion.Minor } },
-        @ { n = 'BuildNumber'; e = { $_.AdminDisplayVersion.Build } },
-        @ { n = 'Revision'; e = { if ($_.AdminDisplayVersion.Revision) { "Rev$($_.AdminDisplayVersion.Revision)" } else { "N/A" } } }
+        @{ n = 'AdminDisplayVersion'; e = { $_.AdminDisplayVersion.ToString() } },
+        @{ n = 'Major'; e = { $_.AdminDisplayVersion.Major } },
+        @{ n = 'Minor'; e = { $_.AdminDisplayVersion.Minor } },
+        @{ n = 'BuildNumber'; e = { $_.AdminDisplayVersion.Build } },
+        @{ n = 'Revision'; e = { if ($_.AdminDisplayVersion.Revision) { "Rev$($_.AdminDisplayVersion.Revision)" } else { "N/A" } } }
 }
 
 # Section: Database Availability Group (DAG) Configuration
@@ -282,12 +282,12 @@ Add-Section -Title 'Mailbox Database Configuration' -Description 'Configuration 
         
         if ($databases) {
             $databases | Select-Object Name, ServerName, DatabaseName,
-                @ { n = 'Mounted'; e = { $_.Mounted } },
-                @ { n = 'DatabaseSize'; e = { if ($_.DatabaseSize) { [math]::Round($_.DatabaseSize.ToBytes() / 1GB, 2) } else { "N/A" } } },
-                @ { n = 'AvailableNewMailboxSpace'; e = { if ($_.AvailableNewMailboxSpace) { [math]::Round($_.AvailableNewMailboxSpace.ToBytes() / 1MB, 2) } else { "N/A" } } },
+                @{ n = 'Mounted'; e = { $_.Mounted } },
+                @{ n = 'DatabaseSize'; e = { if ($_.DatabaseSize) { [math]::Round($_.DatabaseSize.ToBytes() / 1GB, 2) } else { "N/A" } } },
+                @{ n = 'AvailableNewMailboxSpace'; e = { if ($_.AvailableNewMailboxSpace) { [math]::Round($_.AvailableNewMailboxSpace.ToBytes() / 1MB, 2) } else { "N/A" } } },
                 LogFolderPath, EdbFilePath,
-                @ { n = 'CircularLoggingEnabled'; e = { $_.CircularLoggingEnabled } },
-                @ { n = 'CopyCount'; e = { if ($_.CopyCount -ne $null) { $_.CopyCount } else { "N/A" } } },
+                @{ n = 'CircularLoggingEnabled'; e = { $_.CircularLoggingEnabled } },
+                @{ n = 'CopyCount'; e = { if ($_.CopyCount -ne $null) { $_.CopyCount } else { "N/A" } } },
                 LastFullBackup, LastIncrementalBackup
         }
         else {
@@ -330,7 +330,7 @@ Write-Host "Gathering certificate information..." -ForegroundColor Cyan
 # Section: Certificates (C-3: loop over all servers, add Server column)
 Add-Section -Title 'Exchange Certificates' -Description 'SSL/TLS certificates installed on Exchange servers. Critical for secure communication.' -Severity 'Critical' -Query {
     try {
-        # Audit ALL certificates — do not filter by exportability or services.
+        # Audit ALL certificates â€” do not filter by exportability or services.
         $allCerts = @()
         foreach ($srv in $exchangeServers) {
             $certs = Get-ExchangeCertificate -Server $srv.Name -ErrorAction SilentlyContinue
@@ -340,13 +340,13 @@ Add-Section -Title 'Exchange Certificates' -Description 'SSL/TLS certificates in
                         Server             = $srv.Name
                         Thumbprint         = $c.Thumbprint
                         Subject            = $c.Subject
-                        @ { n = 'Services'; e = { if ($null -ne $c.Services) { ($c.Services -join ', ') } else { "N/A" } } },
-                        @ { n = 'Issuer'; e = { if ($null -eq $c.Issuer) { "N/A" } else { $c.Issuer } } },
+                        @{ n = 'Services'; e = { if ($null -ne $c.Services) { ($c.Services -join ', ') } else { "N/A" } } },
+                        @{ n = 'Issuer'; e = { if ($null -eq $c.Issuer) { "N/A" } else { $c.Issuer } } },
                         NotBefore          = $c.NotBefore
                         NotAfter           = $c.NotAfter
-                        @ { n = 'DaysUntilExpired'; e = { [math]::Max(0, ($c.NotAfter - (Get-Date)).Days) } },
-                        @ { n = 'IsExpired'; e = { $c.NotAfter -lt (Get-Date) } },
-                        @ { n = 'IsSelfSigned'; e = { if ($null -eq $c.Issuer -or $c.Issuer -eq $c.Subject) { $true } else { $false } }
+                        @{ n = 'DaysUntilExpired'; e = { [math]::Max(0, ($c.NotAfter - (Get-Date)).Days) } },
+                        @{ n = 'IsExpired'; e = { $c.NotAfter -lt (Get-Date) } },
+                        @{ n = 'IsSelfSigned'; e = { if ($null -eq $c.Issuer -or $c.Issuer -eq $c.Subject) { $true } else { $false } }
                     }
                 }
             }
@@ -386,20 +386,20 @@ Write-Host "Gathering transport configuration..." -ForegroundColor Cyan
 Add-Section -Title 'Transport Configuration' -Description 'Send and receive connector configurations for mail flow.' -Severity 'Info' -Query {
     try {
         $sendConnectors = Get-SendConnector | Select-Object Name,
-            @ { n = 'AddressSpaces'; e = { ($_.AddressSpaces | ForEach-Object SmtpAddress) -join '; ' } },
-            @ { n = 'SmartHosts'; e = { ($_.SmartHosts -join '; ') } },
-            @ { n = 'SourceTransportServers'; e = { ($_.SourceTransportServers -join '; ') } },
-            @ { n = 'Enabled'; e = { $_.Enabled } },
-            @ { n = 'TlsSettings'; e = {
+            @{ n = 'AddressSpaces'; e = { ($_.AddressSpaces | ForEach-Object SmtpAddress) -join '; ' } },
+            @{ n = 'SmartHosts'; e = { ($_.SmartHosts -join '; ') } },
+            @{ n = 'SourceTransportServers'; e = { ($_.SourceTransportServers -join '; ') } },
+            @{ n = 'Enabled'; e = { $_.Enabled } },
+            @{ n = 'TlsSettings'; e = {
                 if ($null -eq $_.TlsSettings) { "N/A" }
                 else { "$($_.TlsSettings.TlsDomainSecure); $($_.TlsSettings.TlsRecipientSecure)" }
             } }
         
         $receiveConnectors = Get-ReceiveConnector | Select-Object Name, Server,
-            @ { n = 'AuthMechanism'; e = { ($_.AuthMechanism -join '; ') } },
-            @ { n = 'PermissionGroups'; e = { ($_.PermissionGroups -join '; ') } },
-            @ { n = 'Enabled'; e = { $_.Enabled } },
-            @ { n = 'Fqdn'; e = { $_.Fqdn } }
+            @{ n = 'AuthMechanism'; e = { ($_.AuthMechanism -join '; ') } },
+            @{ n = 'PermissionGroups'; e = { ($_.PermissionGroups -join '; ') } },
+            @{ n = 'Enabled'; e = { $_.Enabled } },
+            @{ n = 'Fqdn'; e = { $_.Fqdn } }
         
         [pscustomobject]@{
             Section    = "Send Connectors"
@@ -463,14 +463,14 @@ Write-Host "Gathering address configuration..." -ForegroundColor Cyan
 Add-Section -Title 'Address Configuration' -Description 'Accepted domains, address lists, and email policies.' -Severity 'Info' -Query {
     try {
         $acceptedDomains = Get-AcceptedDomain | Select-Object Name, DomainName,
-            @ { n = 'DomainType'; e = { $_.DomainType } },
-            @ { n = 'IsDefault'; e = { $_.IsDefault } },
-            @ { n = 'EnableOutboundReply'; e = { $_.EnableOutboundReply } }
+            @{ n = 'DomainType'; e = { $_.DomainType } },
+            @{ n = 'IsDefault'; e = { $_.IsDefault } },
+            @{ n = 'EnableOutboundReply'; e = { $_.EnableOutboundReply } }
         
         $emailPolicies = Get-EmailAddressPolicy | Select-Object Name,
-            @ { n = 'EnabledEmailAddressTemplates'; e = { ($_.EnabledEmailAddressTemplates -join '; ') } },
-            @ { n = 'LdapRecipientFilter'; e = { $_.LdapRecipientFilter } },
-            @ { n = 'ContainsRecipients'; e = { $_.ContainsRecipients } },
+            @{ n = 'EnabledEmailAddressTemplates'; e = { ($_.EnabledEmailAddressTemplates -join '; ') } },
+            @{ n = 'LdapRecipientFilter'; e = { $_.LdapRecipientFilter } },
+            @{ n = 'ContainsRecipients'; e = { $_.ContainsRecipients } },
             LastModified
         
         [pscustomobject]@{
@@ -500,8 +500,8 @@ Add-Section -Title 'Mailbox Server Statistics' -Description 'Overall mailbox cou
             if ($stats) {
                 # H-1: sum via calculated property (ByteQuantity objects are not numeric)
                 $dbSizes = $stats | Group-Object Database | Select-Object Name,
-                    @ { n = 'MailboxCount'; e = { $_.Count } },
-                    @ { n = 'TotalSizeGB'; e = {
+                    @{ n = 'MailboxCount'; e = { $_.Count } },
+                    @{ n = 'TotalSizeGB'; e = {
                         if ($_.Group) {
                             [math]::Round(($_.Group | Measure-Object @{e={if($null -ne $_.TotalItemSize){$_.TotalItemSize.ToBytes()}else{0}}} ).Sum / 1GB, 2)
                         } else { "N/A" }
@@ -691,21 +691,21 @@ Write-Host "Gathering organizational configuration..." -ForegroundColor Cyan
 Add-Section -Title 'Organization Configuration' -Description 'High-level organization settings and features.' -Severity 'Info' -Query {
     try {
         $orgConfig = Get-OrganizationConfig | Select-Object Name, DisplayName,
-            @ { n = 'ExchangeVersion'; e = { $_.ExchangeVersion } },
-            @ { n = 'DefaultClientVersion'; e = { $_.DefaultClientVersion } },
-            @ { n = 'OwaPolicy'; e = { $_.OwaMailboxPolicy } },
-            @ { n = 'EwsEnabled'; e = { $_.EwsEnabled } },
-            @ { n = 'MapiHttpEnabled'; e = { $_.MapiHttpEnabled } },
-            @ { n = 'ImapEnabled'; e = { $_.ImapEnabled } },
-            @ { n = 'PopEnabled'; e = { $_.PopEnabled } },
-            @ { n = 'ActiveSyncEnabled'; e = { $_.ActiveSyncEnabled } }
+            @{ n = 'ExchangeVersion'; e = { $_.ExchangeVersion } },
+            @{ n = 'DefaultClientVersion'; e = { $_.DefaultClientVersion } },
+            @{ n = 'OwaPolicy'; e = { $_.OwaMailboxPolicy } },
+            @{ n = 'EwsEnabled'; e = { $_.EwsEnabled } },
+            @{ n = 'MapiHttpEnabled'; e = { $_.MapiHttpEnabled } },
+            @{ n = 'ImapEnabled'; e = { $_.ImapEnabled } },
+            @{ n = 'PopEnabled'; e = { $_.PopEnabled } },
+            @{ n = 'ActiveSyncEnabled'; e = { $_.ActiveSyncEnabled } }
         
         $transportConfig = Get-TransportConfig | Select-Object Name,
-            @ { n = 'MaxSendSize'; e = { $_.MaxSendSize } },
-            @ { n = 'MaxReceiveSize'; e = { $_.MaxReceiveSize } },
-            @ { n = 'ExternalDsnEnabled'; e = { $_.ExternalDsnEnabled } },
-            @ { n = 'InternalDsnEnabled'; e = { $_.InternalDsnEnabled } },
-            @ { n = 'DsnFormat'; e = { $_.DsnFormat } }
+            @{ n = 'MaxSendSize'; e = { $_.MaxSendSize } },
+            @{ n = 'MaxReceiveSize'; e = { $_.MaxReceiveSize } },
+            @{ n = 'ExternalDsnEnabled'; e = { $_.ExternalDsnEnabled } },
+            @{ n = 'InternalDsnEnabled'; e = { $_.InternalDsnEnabled } },
+            @{ n = 'DsnFormat'; e = { $_.DsnFormat } }
         
         [pscustomobject]@{
             Section    = "Organization Configuration"
@@ -733,49 +733,49 @@ Add-Section -Title 'Client Access Configuration' -Description 'Client access ser
             # Get OWA virtual directories
             $owaVdirs = Get-OwaVirtualDirectory -Server $server.Name -ErrorAction SilentlyContinue | 
                 Select-Object Name, Server,
-                @ { n = 'InternalUrl'; e = { $_.InternalUrl } },
-                @ { n = 'ExternalUrl'; e = { $_.ExternalUrl } },
-                @ { n = 'FormsAuthentication'; e = { $_.FormsAuthentication } },
-                @ { n = 'WindowsAuthentication'; e = { $_.WindowsAuthentication } }
+                @{ n = 'InternalUrl'; e = { $_.InternalUrl } },
+                @{ n = 'ExternalUrl'; e = { $_.ExternalUrl } },
+                @{ n = 'FormsAuthentication'; e = { $_.FormsAuthentication } },
+                @{ n = 'WindowsAuthentication'; e = { $_.WindowsAuthentication } }
             
             # Get ECP virtual directories
             $ecpVdirs = Get-EcpVirtualDirectory -Server $server.Name -ErrorAction SilentlyContinue | 
                 Select-Object Name, Server,
-                @ { n = 'InternalUrl'; e = { $_.InternalUrl } },
-                @ { n = 'ExternalUrl'; e = { $_.ExternalUrl } }
+                @{ n = 'InternalUrl'; e = { $_.InternalUrl } },
+                @{ n = 'ExternalUrl'; e = { $_.ExternalUrl } }
             
             # Get MAPI virtual directories
             $mapiVdirs = Get-MapiVirtualDirectory -Server $server.Name -ErrorAction SilentlyContinue | 
                 Select-Object Name, Server,
-                @ { n = 'InternalUrl'; e = { $_.InternalUrl } },
-                @ { n = 'ExternalUrl'; e = { $_.ExternalUrl } }
+                @{ n = 'InternalUrl'; e = { $_.InternalUrl } },
+                @{ n = 'ExternalUrl'; e = { $_.ExternalUrl } }
             
             # Get EWS virtual directories
             $ewsVdirs = Get-WebServicesVirtualDirectory -Server $server.Name -ErrorAction SilentlyContinue | 
                 Select-Object Name, Server,
-                @ { n = 'InternalUrl'; e = { $_.InternalUrl } },
-                @ { n = 'ExternalUrl'; e = { $_.ExternalUrl } },
-                @ { n = 'BasicAuthentication'; e = { $_.BasicAuthentication } }
+                @{ n = 'InternalUrl'; e = { $_.InternalUrl } },
+                @{ n = 'ExternalUrl'; e = { $_.ExternalUrl } },
+                @{ n = 'BasicAuthentication'; e = { $_.BasicAuthentication } }
             
             # M-2: include server name in sub-heading for 2-member env clarity
             $casSettings += [pscustomobject]@{
                 Server              = $server.Name
-                Section             = "OWA Virtual Directories — $($server.Name)"
+                Section             = "OWA Virtual Directories â€” $($server.Name)"
                 Data                = $owaVdirs
             }
             $casSettings += [pscustomobject]@{
                 Server              = $server.Name
-                Section             = "ECP Virtual Directories — $($server.Name)"
+                Section             = "ECP Virtual Directories â€” $($server.Name)"
                 Data                = $ecpVdirs
             }
             $casSettings += [pscustomobject]@{
                 Server              = $server.Name
-                Section             = "MAPI Virtual Directories — $($server.Name)"
+                Section             = "MAPI Virtual Directories â€” $($server.Name)"
                 Data                = $mapiVdirs
             }
             $casSettings += [pscustomobject]@{
                 Server              = $server.Name
-                Section             = "EWS Virtual Directories — $($server.Name)"
+                Section             = "EWS Virtual Directories â€” $($server.Name)"
                 Data                = $ewsVdirs
             }
         }
@@ -860,11 +860,11 @@ foreach ($sec in $report) {
     [void]$body.Append('</section>')
 }
 
-# Build header metadata (template §6: encode all dynamic values)
-$hTitle   = ConvertTo-HtmlEncoded "Exchange Environment Audit Report — $orgName"
+# Build header metadata (template Â§6: encode all dynamic values)
+$hTitle   = ConvertTo-HtmlEncoded "Exchange Environment Audit Report â€” $orgName"
 $hForest  = ConvertTo-HtmlEncoded $domainInfo.Forest
 $hDNSRoot = ConvertTo-HtmlEncoded $domainInfo.DNSRoot
-# H-2: encode run-by identity (template §6)
+# H-2: encode run-by identity (template Â§6)
 $hRunBy   = ConvertTo-HtmlEncoded "$env:USERDOMAIN\$env:USERNAME"
 if ($Server) {
     $hTarget  = ConvertTo-HtmlEncoded $Server
