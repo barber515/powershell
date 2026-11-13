@@ -76,7 +76,7 @@ param(
 $ErrorActionPreference = 'Continue'
 Set-StrictMode -Version Latest
 
-# L-7: Preflight check â€” verify Exchange cmdlets are available (running outside EMS)
+# L-7: Preflight check -- verify Exchange cmdlets are available (running outside EMS)
 if (-not (Get-Command Get-ExchangeServer -ErrorAction SilentlyContinue)) {
     Write-Error "This script must be run from the Exchange Management Shell."
     exit 1
@@ -205,7 +205,7 @@ catch {
     Write-Warning "Could not retrieve organization configuration: $_"
 }
 
-# C-1: Domain info â€” no #Requires -Modules ActiveDirectory; use env fallback
+# C-1: Domain info -- no #Requires -Modules ActiveDirectory; use env fallback
 $domainInfo = [pscustomobject]@{ DNSRoot = $env:USERDNSDOMAIN; Forest = $env:USERDNSDOMAIN }
 try {
     if (Get-Command Get-ADDomain -ErrorAction SilentlyContinue) {
@@ -330,24 +330,24 @@ Write-Host "Gathering certificate information..." -ForegroundColor Cyan
 # Section: Certificates (C-3: loop over all servers, add Server column)
 Add-Section -Title 'Exchange Certificates' -Description 'SSL/TLS certificates installed on Exchange servers. Critical for secure communication.' -Severity 'Critical' -Query {
     try {
-        # Audit ALL certificates â€” do not filter by exportability or services.
+        # Audit ALL certificates -- do not filter by exportability or services.
         $allCerts = @()
         foreach ($srv in $exchangeServers) {
             $certs = Get-ExchangeCertificate -Server $srv.Name -ErrorAction SilentlyContinue
             if ($certs) {
                 foreach ($c in $certs) {
-                    [pscustomobject]@{
-                        Server             = $srv.Name
-                        Thumbprint         = $c.Thumbprint
-                        Subject            = $c.Subject
-                        @{ n = 'Services'; e = { if ($null -ne $c.Services) { ($c.Services -join ', ') } else { "N/A" } } },
-                        @{ n = 'Issuer'; e = { if ($null -eq $c.Issuer) { "N/A" } else { $c.Issuer } } },
-                        NotBefore          = $c.NotBefore
-                        NotAfter           = $c.NotAfter
-                        @{ n = 'DaysUntilExpired'; e = { [math]::Max(0, ($c.NotAfter - (Get-Date)).Days) } },
-                        @{ n = 'IsExpired'; e = { $c.NotAfter -lt (Get-Date) } },
-                        @{ n = 'IsSelfSigned'; e = { if ($null -eq $c.Issuer -or $c.Issuer -eq $c.Subject) { $true } else { $false } }
-                    }
+                    $certObj = [ordered]@{}
+                    $certObj.Server = $srv.Name
+                    $certObj.Thumbprint = $c.Thumbprint
+                    $certObj.Subject = $c.Subject
+                    if ($null -ne $c.Services) { $certObj.Services = $c.Services -join ', ' } else { $certObj.Services = 'N/A' }
+                    if ($null -eq $c.Issuer) { $certObj.Issuer = 'N/A' } else { $certObj.Issuer = $c.Issuer }
+                    $certObj.NotBefore = $c.NotBefore
+                    $certObj.NotAfter = $c.NotAfter
+                    $certObj.DaysUntilExpired = [math]::Max(0, ($c.NotAfter - (Get-Date)).Days)
+                    $certObj.IsExpired = $c.NotAfter -lt (Get-Date)
+                    if ($null -eq $c.Issuer -or $c.Issuer -eq $c.Subject) { $certObj.IsSelfSigned = $true } else { $certObj.IsSelfSigned = $false }
+                    [pscustomobject]$certObj
                 }
             }
         }
@@ -760,22 +760,22 @@ Add-Section -Title 'Client Access Configuration' -Description 'Client access ser
             # M-2: include server name in sub-heading for 2-member env clarity
             $casSettings += [pscustomobject]@{
                 Server              = $server.Name
-                Section             = "OWA Virtual Directories â€” $($server.Name)"
+                Section             = "OWA Virtual Directories - $($server.Name)"
                 Data                = $owaVdirs
             }
             $casSettings += [pscustomobject]@{
                 Server              = $server.Name
-                Section             = "ECP Virtual Directories â€” $($server.Name)"
+                Section             = "ECP Virtual Directories - $($server.Name)"
                 Data                = $ecpVdirs
             }
             $casSettings += [pscustomobject]@{
                 Server              = $server.Name
-                Section             = "MAPI Virtual Directories â€” $($server.Name)"
+                Section             = "MAPI Virtual Directories - $($server.Name)"
                 Data                = $mapiVdirs
             }
             $casSettings += [pscustomobject]@{
                 Server              = $server.Name
-                Section             = "EWS Virtual Directories â€” $($server.Name)"
+                Section             = "EWS Virtual Directories - $($server.Name)"
                 Data                = $ewsVdirs
             }
         }
@@ -860,11 +860,11 @@ foreach ($sec in $report) {
     [void]$body.Append('</section>')
 }
 
-# Build header metadata (template Â§6: encode all dynamic values)
-$hTitle   = ConvertTo-HtmlEncoded "Exchange Environment Audit Report â€” $orgName"
+# Build header metadata (template section 6: encode all dynamic values)
+$hTitle   = ConvertTo-HtmlEncoded "Exchange Environment Audit Report - $orgName"
 $hForest  = ConvertTo-HtmlEncoded $domainInfo.Forest
 $hDNSRoot = ConvertTo-HtmlEncoded $domainInfo.DNSRoot
-# H-2: encode run-by identity (template Â§6)
+# H-2: encode run-by identity (template section 6)
 $hRunBy   = ConvertTo-HtmlEncoded "$env:USERDOMAIN\$env:USERNAME"
 if ($Server) {
     $hTarget  = ConvertTo-HtmlEncoded $Server
