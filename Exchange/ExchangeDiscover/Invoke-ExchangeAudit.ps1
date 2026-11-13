@@ -1,4 +1,4 @@
-﻿#Requires -Version 5.1
+#Requires -Version 5.1
 
 <#
 .SYNOPSIS
@@ -114,7 +114,7 @@ function ConvertTo-HtmlTable {
     foreach ($r in $Rows) {
         [void]$sb.Append('<tr>')
         foreach ($c in $cols) {
-            $val = [string]$r.$c
+            if ($r.PSObject.Properties.Name -contains $c) { $val = [string]$r.$c } else { $val = 'N/A' }
             [void]$sb.Append("<td>$(ConvertTo-HtmlEncoded $val)</td>")
         }
         [void]$sb.Append('</tr>')
@@ -222,8 +222,8 @@ Write-Host "Gathering server configuration..." -ForegroundColor Cyan
 # Section: Server Configuration
 Add-Section -Title 'Exchange Server Configuration' -Description 'Detailed configuration of all Exchange servers in the environment.' -Severity 'Info' -Query {
     $exchangeServers | Select-Object Name, Site, Edition, AdminDisplayVersion, ServerRole,
-        @{ n = 'IsMailboxServer'; e = { $_.ServerRoles -match 'Mailbox' } },
-        @{ n = 'IsEdgeServer'; e = { $_.ServerRoles -match 'Edge' } }
+        @{ n = 'IsMailboxServer'; e = { if ($_.ServerRoles) { $_.ServerRoles -match 'Mailbox' } else { $false } } },
+        @{ n = 'IsEdgeServer'; e = { if ($_.ServerRoles) { $_.ServerRoles -match 'Edge' } else { $false } } }
 }
 
 # Section: Patch Levels (M-1: Exchange 2019 uses CUs, not RUs)
@@ -467,7 +467,7 @@ Add-Section -Title 'Address Configuration' -Description 'Accepted domains, addre
             @{ n = 'IsDefault'; e = { $_.IsDefault } },
             @{ n = 'EnableOutboundReply'; e = { $_.EnableOutboundReply } }
         
-        $emailPolicies = Get-EmailAddressPolicy | Select-Object Name,
+        $emailPolicies = Get-EmailAddressPolicy -IncludeMailboxSettingOnlyPolicy | Select-Object Name,
             @{ n = 'EnabledEmailAddressTemplates'; e = { ($_.EnabledEmailAddressTemplates -join '; ') } },
             @{ n = 'LdapRecipientFilter'; e = { $_.LdapRecipientFilter } },
             @{ n = 'ContainsRecipients'; e = { $_.ContainsRecipients } },
