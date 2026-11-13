@@ -503,7 +503,11 @@ Add-Section -Title 'Mailbox Server Statistics' -Description 'Overall mailbox cou
                     @{ n = 'MailboxCount'; e = { $_.Count } },
                     @{ n = 'TotalSizeGB'; e = {
                         if ($_.Group) {
-                            [math]::Round(($_.Group | Measure-Object @{e={if($null -ne $_.TotalItemSize){$_.TotalItemSize.ToBytes()}else{0}}} ).Sum / 1GB, 2)
+                            $sum = 0
+                            foreach ($item in $_.Group) {
+                                if ($null -ne $item.TotalItemSize) { $sum += $item.TotalItemSize.ToBytes() }
+                            }
+                            [math]::Round($sum / 1GB, 2)
                         } else { "N/A" }
                     } }
                 
@@ -511,7 +515,13 @@ Add-Section -Title 'Mailbox Server Statistics' -Description 'Overall mailbox cou
                     Server              = $server.Name
                     MailboxCount        = $stats.Count
                     DatabaseCount       = ($dbSizes | Measure-Object).Count
-                    TotalStorageGB      = if ($stats) { [math]::Round(($stats | Measure-Object @{e={if($null -ne $_.TotalItemSize){$_.TotalItemSize.ToBytes()}else{0}}} ).Sum / 1GB, 2) } else { "N/A" }
+                    TotalStorageGB      = if ($stats) {
+                        $sum = 0
+                        foreach ($item in $stats) {
+                            if ($null -ne $item.TotalItemSize) { $sum += $item.TotalItemSize.ToBytes() }
+                        }
+                        [math]::Round($sum / 1GB, 2)
+                    } else { "N/A" }
                 }
             }
         }

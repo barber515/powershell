@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-11-13 — Runtime property errors fixed: Subject not found, ServerRole (not ServerRoles), EmailAddressPolicy incomplete
+## 2026-11-13 — Runtime errors fixed: Subject not found, ServerRole (not ServerRoles), EmailAddressPolicy incomplete, Measure-Object property validation
 
 ### `Invoke-ExchangeAudit.ps1`
 
@@ -9,12 +9,14 @@
 | **R-1** | Added `-IncludeMailboxSettingOnlyPolicy` to `Get-EmailAddressPolicy`. | Without it, email address policies that exist solely for mailbox settings (no SMTP addresses) are silently excluded from the report — a gap in audit coverage. |
 | **R-2** | `ConvertTo-HtmlTable`: replaced `$val = [string]$r.$c` with property-existence guard (`$r.PSObject.Properties.Name -contains $c`). | When rows come from mixed sources (e.g., different cmdlet outputs merged into one table), some objects lack properties present in the first row. Direct `$r.$c` throws "The property 'X' cannot be found"; the guard returns `N/A` instead. |
 | **R-3** | Replaced all `.ServerRoles` (plural, deprecated) with `.ServerRole` (singular, Exchange 2013+). Added `-and` null guard: `{ $_.ServerRole -and $_.ServerRole -match 'Mailbox' }`. | `Get-ExchangeServer` in Exchange 2013+ deprecated the plural `ServerRoles` property; it now returns `.ServerRole` (singular string like "Mailbox", "ClientAccess"). The script was written for pre-2013 Exchange where `ServerRoles` existed. All 6 occurrences across Server Configuration, Transport Queues, Mailbox Statistics, Server Health Status, DAG Health, and Client Access sections were updated. |
+| **R-4** | Replaced `Measure-Object @{e={...}}` with explicit `foreach` loops for summing `.TotalItemSize.ToBytes()`. | In PowerShell 5.1, `Measure-Object` validates the "property" before evaluating a calculated-property expression. If any object in the pipeline lacks `.TotalItemSize`, it throws "cannot process argument because the value of argument 'property' is not valid." The explicit loop avoids property validation entirely. Applied to both the per-database size calculation and the total-storage sum in Mailbox Server Statistics. |
 
 ### Behavioral changes
 - Email Address Policies section now includes mailbox-setting-only policies (previously hidden).
 - HTML report no longer shows "The property 'Subject' cannot be found" or "ServerRoles cannot be found" errors.
 - Server Configuration table correctly reports `IsMailboxServer`/`IsEdgeServer` using the Exchange 2019 `.ServerRole` property.
 - Transport Queues, Mailbox Statistics, Server Health Status, DAG Health, and Client Access sections now correctly filter to mailbox servers using the modern `.ServerRole` property.
+- Mailbox Server Statistics no longer throws "cannot process argument because the value of argument 'property' is not valid" — uses explicit loops instead of `Measure-Object` with calculated properties.
 
 ## 2026-11-13 — Syntax error fixes: unexpected token, missing expression, hash literal incomplete
 
