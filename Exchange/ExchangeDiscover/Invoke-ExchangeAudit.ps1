@@ -423,7 +423,7 @@ Add-Section -Title 'Transport Queue Status' -Description 'Current status of tran
     try {
         $queueStatus = @()
         
-        foreach ($server in $exchangeServers | Where-Object { $_.ServerRoles -match 'Mailbox' }) {
+        foreach ($server in $exchangeServers | Where-Object { $_.ServerRoles -and $_.ServerRoles -match 'Mailbox' }) {
             $queues = Get-Queue -Server $server.Name -ErrorAction SilentlyContinue
             foreach ($queue in $queues) {
                 # L-5: only include queues with messages (stuck/deferred stand out)
@@ -495,7 +495,7 @@ Add-Section -Title 'Mailbox Server Statistics' -Description 'Overall mailbox cou
     try {
         $mailboxStats = @()
         
-        foreach ($server in $exchangeServers | Where-Object { $_.ServerRoles -match 'Mailbox' }) {
+        foreach ($server in $exchangeServers | Where-Object { $_.ServerRoles -and $_.ServerRoles -match 'Mailbox' }) {
             $stats = Get-MailboxStatistics -Server $server.Name -ErrorAction SilentlyContinue
             if ($stats) {
                 # H-1: sum via calculated property (ByteQuantity objects are not numeric)
@@ -589,7 +589,7 @@ Add-Section -Title 'Server Health Status' -Description 'Health status of critica
             }
             
             # Get database copy status for mailbox servers
-            if ($server.ServerRoles -match 'Mailbox') {
+            if ($server.ServerRoles -and $server.ServerRoles -match 'Mailbox') {
                 $dbCopies = Get-MailboxDatabaseCopyStatus -Server $server.Name -ErrorAction SilentlyContinue
                 
                 foreach ($dbCopy in $dbCopies) {
@@ -627,7 +627,7 @@ Add-Section -Title 'DAG Health Status' -Description 'Health of database availabi
         # C-4: Query each server's local copies with -Server (the per-server loop ensures full coverage).
         $dagHealth = @()
         
-        foreach ($server in $exchangeServers | Where-Object { $_.ServerRoles -match 'Mailbox' }) {
+        foreach ($server in $exchangeServers | Where-Object { $_.ServerRoles -and $_.ServerRoles -match 'Mailbox' }) {
             $dbCopies = Get-MailboxDatabaseCopyStatus -Server $server.Name -ErrorAction SilentlyContinue
             
             foreach ($dbCopy in $dbCopies) {
@@ -729,7 +729,7 @@ Add-Section -Title 'Client Access Configuration' -Description 'Client access ser
     try {
         $casSettings = @()
         
-        foreach ($server in $exchangeServers | Where-Object { $_.ServerRoles -match 'Mailbox' }) {
+        foreach ($server in $exchangeServers | Where-Object { $_.ServerRoles -and $_.ServerRoles -match 'Mailbox' }) {
             # Get OWA virtual directories
             $owaVdirs = Get-OwaVirtualDirectory -Server $server.Name -ErrorAction SilentlyContinue | 
                 Select-Object Name, Server,
