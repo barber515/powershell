@@ -222,8 +222,8 @@ Write-Host "Gathering server configuration..." -ForegroundColor Cyan
 # Section: Server Configuration
 Add-Section -Title 'Exchange Server Configuration' -Description 'Detailed configuration of all Exchange servers in the environment.' -Severity 'Info' -Query {
     $exchangeServers | Select-Object Name, Site, Edition, AdminDisplayVersion, ServerRole,
-        @{ n = 'IsMailboxServer'; e = { if ($_.ServerRoles) { $_.ServerRoles -match 'Mailbox' } else { $false } } },
-        @{ n = 'IsEdgeServer'; e = { if ($_.ServerRoles) { $_.ServerRoles -match 'Edge' } else { $false } } }
+        @{ n = 'IsMailboxServer'; e = { if ($_.ServerRole) { $_.ServerRole -match 'Mailbox' } else { $false } } },
+        @{ n = 'IsEdgeServer'; e = { if ($_.ServerRole) { $_.ServerRole -match 'Edge' } else { $false } } }
 }
 
 # Section: Patch Levels (M-1: Exchange 2019 uses CUs, not RUs)
@@ -423,7 +423,7 @@ Add-Section -Title 'Transport Queue Status' -Description 'Current status of tran
     try {
         $queueStatus = @()
         
-        foreach ($server in $exchangeServers | Where-Object { $_.ServerRoles -and $_.ServerRoles -match 'Mailbox' }) {
+        foreach ($server in $exchangeServers | Where-Object { $_.ServerRole -and $_.ServerRole -match 'Mailbox' }) {
             $queues = Get-Queue -Server $server.Name -ErrorAction SilentlyContinue
             foreach ($queue in $queues) {
                 # L-5: only include queues with messages (stuck/deferred stand out)
@@ -495,7 +495,7 @@ Add-Section -Title 'Mailbox Server Statistics' -Description 'Overall mailbox cou
     try {
         $mailboxStats = @()
         
-        foreach ($server in $exchangeServers | Where-Object { $_.ServerRoles -and $_.ServerRoles -match 'Mailbox' }) {
+        foreach ($server in $exchangeServers | Where-Object { $_.ServerRole -and $_.ServerRole -match 'Mailbox' }) {
             $stats = Get-MailboxStatistics -Server $server.Name -ErrorAction SilentlyContinue
             if ($stats) {
                 # H-1: sum via calculated property (ByteQuantity objects are not numeric)
@@ -589,7 +589,7 @@ Add-Section -Title 'Server Health Status' -Description 'Health status of critica
             }
             
             # Get database copy status for mailbox servers
-            if ($server.ServerRoles -and $server.ServerRoles -match 'Mailbox') {
+            if ($server.ServerRole -and $server.ServerRole -match 'Mailbox') {
                 $dbCopies = Get-MailboxDatabaseCopyStatus -Server $server.Name -ErrorAction SilentlyContinue
                 
                 foreach ($dbCopy in $dbCopies) {
@@ -627,7 +627,7 @@ Add-Section -Title 'DAG Health Status' -Description 'Health of database availabi
         # C-4: Query each server's local copies with -Server (the per-server loop ensures full coverage).
         $dagHealth = @()
         
-        foreach ($server in $exchangeServers | Where-Object { $_.ServerRoles -and $_.ServerRoles -match 'Mailbox' }) {
+        foreach ($server in $exchangeServers | Where-Object { $_.ServerRole -and $_.ServerRole -match 'Mailbox' }) {
             $dbCopies = Get-MailboxDatabaseCopyStatus -Server $server.Name -ErrorAction SilentlyContinue
             
             foreach ($dbCopy in $dbCopies) {
@@ -729,7 +729,7 @@ Add-Section -Title 'Client Access Configuration' -Description 'Client access ser
     try {
         $casSettings = @()
         
-        foreach ($server in $exchangeServers | Where-Object { $_.ServerRoles -and $_.ServerRoles -match 'Mailbox' }) {
+        foreach ($server in $exchangeServers | Where-Object { $_.ServerRole -and $_.ServerRole -match 'Mailbox' }) {
             # Get OWA virtual directories
             $owaVdirs = Get-OwaVirtualDirectory -Server $server.Name -ErrorAction SilentlyContinue | 
                 Select-Object Name, Server,

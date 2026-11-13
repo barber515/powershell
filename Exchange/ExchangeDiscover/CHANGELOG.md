@@ -1,6 +1,34 @@
 # Changelog
 
-## 2026-11-13 — Full remediation of findings C-1..5, H-1..5, M-1..5 (L-2..7) against `findings.md`
+## 2026-11-13 — Runtime property errors fixed: Subject not found, ServerRole (not ServerRoles), EmailAddressPolicy incomplete
+
+### `Invoke-ExchangeAudit.ps1`
+
+| # | Fix | Rationale |
+|---|-----|----------|
+| **R-1** | Added `-IncludeMailboxSettingOnlyPolicy` to `Get-EmailAddressPolicy`. | Without it, email address policies that exist solely for mailbox settings (no SMTP addresses) are silently excluded from the report — a gap in audit coverage. |
+| **R-2** | `ConvertTo-HtmlTable`: replaced `$val = [string]$r.$c` with property-existence guard (`$r.PSObject.Properties.Name -contains $c`). | When rows come from mixed sources (e.g., different cmdlet outputs merged into one table), some objects lack properties present in the first row. Direct `$r.$c` throws "The property 'X' cannot be found"; the guard returns `N/A` instead. |
+| **R-3** | Replaced all `.ServerRoles` (plural, deprecated) with `.ServerRole` (singular, Exchange 2013+). Added `-and` null guard: `{ $_.ServerRole -and $_.ServerRole -match 'Mailbox' }`. | `Get-ExchangeServer` in Exchange 2013+ deprecated the plural `ServerRoles` property; it now returns `.ServerRole` (singular string like "Mailbox", "ClientAccess"). The script was written for pre-2013 Exchange where `ServerRoles` existed. All 6 occurrences across Server Configuration, Transport Queues, Mailbox Statistics, Server Health Status, DAG Health, and Client Access sections were updated. |
+
+### Behavioral changes
+- Email Address Policies section now includes mailbox-setting-only policies (previously hidden).
+- HTML report no longer shows "The property 'Subject' cannot be found" or "ServerRoles cannot be found" errors.
+- Server Configuration table correctly reports `IsMailboxServer`/`IsEdgeServer` using the Exchange 2019 `.ServerRole` property.
+- Transport Queues, Mailbox Statistics, Server Health Status, DAG Health, and Client Access sections now correctly filter to mailbox servers using the modern `.ServerRole` property.
+
+## 2026-11-13 — Syntax error fixes: unexpected token, missing expression, hash literal incomplete
+
+### `Invoke-ExchangeAudit.ps1`
+
+| # | Fix | Rationale |
+|---|-----|----------|
+| **S-1** | Replaced nested `@{ n='x'; e={...} }` calculated-property syntax inside `[pscustomobject]@{}` blocks with explicit `[ordered]@{} + property assignments`. | PowerShell 5.1's parser cannot reliably handle `@{n='x';e={...}}` as a value expression within another hashtable literal — it misidentifies the inner `{` as starting a new entry, producing "hash literal was incomplete" and "missing expression after ','" errors. The `[ordered]@{} + $obj.Prop = ...` pattern avoids nested hashtables entirely. |
+| **S-2** | Replaced all double-encoded em-dash sequences (`â€"`, bytes `C3 A2 E2 82 AC E2 80 9D`) with ASCII `-` in string literals and here-string content. Also replaced double-encoded section sign (`Â§`, bytes `C3 82 C2 A7`) with plain text "section N" in comments. | The file contained UTF-8 em-dashes that had been re-encoded through Windows-1252 (a classic encoding corruption: original `—` → UTF-8 `E2 80 94` → Win-1252 interpretation → UTF-8 `C3 A2 E2 82 AC E2 80 9D`). PowerShell's parser treats these multi-byte sequences as individual characters inside string literals, confusing `$()` interpolation boundaries and producing "unexpected token '$('" errors that cascaded into breaking the entire HTML here-string. |
+
+### Root cause summary
+- **Unexpected token**: Double-encoded em-dash sequences (UTF-8 `E2 80 94` re-encoded through Windows-1252 → `C3 A2 E2 82 AC E2 80 9D`) inside string literals and here-string content confused PowerShell's parser about `$()` interpolation boundaries, producing cascading "unexpected token" errors.
+- **Missing expression after ','**: The same encoding corruption caused the parser to treat multi-byte sequences as individual characters, breaking expression boundaries at commas within calculated-property definitions.
+- **Hash literal was incomplete**: Nested `@{ n='x'; e={...} }` syntax inside `[pscustomobject]@{}` blocks — PowerShell 5.1's parser misidentifies the inner `{` as starting a new hashtable entry, leaving the outer literal unterminated.
 
 ### `Invoke-ExchangeAudit.ps1`
 
